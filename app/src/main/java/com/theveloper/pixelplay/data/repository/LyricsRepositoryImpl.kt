@@ -1082,7 +1082,13 @@ class LyricsRepositoryImpl @Inject constructor(
                 ParcelFileDescriptor.open(tempFile, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
                     val metadata = TagLib.getMetadata(fd.detachFd())
                     val propertyMap = metadata?.propertyMap
+                    // Check all known tag keys that may carry lyrics content.
+                    // Priority order: LYRICS (standard + Apple ©lyr) → SYNCEDLYRICS
+                    // (used by some taggers for LRC) → TTML (explicit TTML key written
+                    // by some broadcast/streaming tools) → UNSYNCEDLYRICS (legacy).
                     val lyricsField = propertyMap?.get("LYRICS")?.firstOrNull()
+                        ?: propertyMap?.get("SYNCEDLYRICS")?.firstOrNull()
+                        ?: propertyMap?.get("TTML")?.firstOrNull()
                         ?: propertyMap?.get("UNSYNCEDLYRICS")?.firstOrNull()
 
                     if (!lyricsField.isNullOrBlank()) {
