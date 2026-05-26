@@ -105,12 +105,12 @@ internal fun rememberSheetVisualState(
         currentSheetContentState
     ) {
         {
-            val collapsedCornerTarget = if (navBarStyle == NavBarStyle.DEFAULT) {
+            val collapsedCornerTarget = if (isNavBarHidden) {
+                32.dp
+            } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 navBarCornerRadiusDp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
-            } else if (isNavBarHidden) {
-                60.dp
             } else {
                 navBarCornerRadiusDp
             }
@@ -165,12 +165,12 @@ internal fun rememberSheetVisualState(
         currentSheetContentState
     ) {
         {
-            val collapsedRadius = if (navBarStyle == NavBarStyle.DEFAULT) {
+            val collapsedRadius = if (isNavBarHidden) {
+                32.dp
+            } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 10.dp
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 32.dp
-            } else if (isNavBarHidden) {
-                60.dp
             } else {
                 navBarCornerRadiusDp
             }
@@ -194,7 +194,9 @@ internal fun rememberSheetVisualState(
                     }
                 }
 
-            if (navBarStyle == NavBarStyle.DEFAULT) {
+            if (isNavBarHidden) {
+                calculatedNormally
+            } else if (navBarStyle == NavBarStyle.DEFAULT) {
                 calculatedNormally
             } else if (navBarStyle == NavBarStyle.FULL_WIDTH) {
                 calculatedNormally
