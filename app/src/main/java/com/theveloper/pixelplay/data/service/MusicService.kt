@@ -266,28 +266,20 @@ class MusicService : MediaLibraryService() {
     }
 
     private val playerSwapListener: (Player) -> Unit = { newPlayer ->
-        serviceScope.launch(Dispatchers.Main) {
-            publishMediaSessionPlayer(newPlayer, "Swapped MediaSession player to new instance.")
-            prepareReplayGainForTransitionPlayer(newPlayer)
-        }
+        publishMediaSessionPlayer(newPlayer, "Swapped MediaSession player to new instance.")
+        prepareReplayGainForTransitionPlayer(newPlayer)
     }
 
     private val transitionDisplayPlayerListener: (Player) -> Unit = { displayPlayer ->
-        serviceScope.launch(Dispatchers.Main) {
-            publishMediaSessionPlayer(
-                displayPlayer,
-                "Published incoming crossfade player to MediaSession."
-            )
-            prepareReplayGainForTransitionPlayer(displayPlayer)
-        }
+        publishMediaSessionPlayer(
+            displayPlayer,
+            "Published incoming crossfade player to MediaSession."
+        )
+        prepareReplayGainForTransitionPlayer(displayPlayer)
     }
 
     private val transitionFinishedListener: () -> Unit = {
-        // Dispatch to Main so it runs after any pending playerSwapListener coroutine
-        // has completed — otherwise onTransitionFinished() may see stale state.
-        serviceScope.launch(Dispatchers.Main) {
-            onTransitionFinished()
-        }
+        onTransitionFinished()
     }
 
     private fun publishMediaSessionPlayer(player: Player, logMessage: String) {
@@ -404,6 +396,9 @@ class MusicService : MediaLibraryService() {
         engine.masterPlayer.addListener(playerListener)
 
         // Handle player swaps (crossfade) to keep MediaSession in sync
+        engine.setOnPlayerAboutToBeReleasedListener { oldPlayer ->
+            oldPlayer.removeListener(playerListener)
+        }
         engine.addPlayerSwapListener(playerSwapListener)
         engine.addTransitionDisplayPlayerListener(transitionDisplayPlayerListener)
         engine.addTransitionFinishedListener(transitionFinishedListener)
@@ -1704,6 +1699,7 @@ class MusicService : MediaLibraryService() {
         engine.removePlayerSwapListener(playerSwapListener)
         engine.removeTransitionDisplayPlayerListener(transitionDisplayPlayerListener)
         engine.removeTransitionFinishedListener(transitionFinishedListener)
+        engine.setOnPlayerAboutToBeReleasedListener {}
         mediaSession?.player?.removeListener(playerListener)
         engine.masterPlayer.removeListener(playerListener)
 

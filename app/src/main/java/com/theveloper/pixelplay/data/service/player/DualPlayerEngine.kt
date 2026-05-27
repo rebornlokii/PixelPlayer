@@ -129,6 +129,12 @@ class DualPlayerEngine @Inject constructor(
     private val onPlayerSwappedListeners = mutableListOf<(Player) -> Unit>()
     private val onTransitionDisplayPlayerListeners = mutableListOf<(Player) -> Unit>()
     private val onTransitionFinishedListeners = mutableListOf<() -> Unit>()
+
+    private var onPlayerAboutToBeReleasedListener: ((Player) -> Unit)? = null
+
+    fun setOnPlayerAboutToBeReleasedListener(listener: (Player) -> Unit) {
+        onPlayerAboutToBeReleasedListener = listener
+    }
     
     // Active Audio Session ID Flow
     private val _activeAudioSessionId = MutableStateFlow(0)
@@ -386,6 +392,7 @@ class DualPlayerEngine @Inject constructor(
         }
 
         if (::playerA.isInitialized) {
+            onPlayerAboutToBeReleasedListener?.invoke(playerA)
             try { playerA.release() } catch (e: Exception) { /* Ignore */ }
         }
         playerB?.let { try { it.release() } catch (e: Exception) { /* Ignore */ } }
@@ -459,10 +466,7 @@ class DualPlayerEngine @Inject constructor(
             if (!audioOffloadEnabled || transitionRunning || player !== playerA) return@launch
             if (currentMediaId != watchedMediaId) return@launch
             if (player.playbackState != Player.STATE_BUFFERING || player.isPlaying || !player.playWhenReady) return@launch
-            if (player.currentPosition > 1_000L || player.bufferedPosition <= 0L) return@launch
-
-            val timeSincePlayRequestMs = (SystemClock.elapsedRealtime() - lastPlayWhenReadyAtMs).coerceAtLeast(0L)
-            if (timeSincePlayRequestMs < AUDIO_OFFLOAD_BUFFERING_FALLBACK_MS) return@launch
+            if (player.currentPosition > 1_000L) return@launch
 
             disableAudioOffloadForSession(
                 reason = "Local media stayed buffering for ${AUDIO_OFFLOAD_BUFFERING_FALLBACK_MS}ms"
@@ -546,6 +550,7 @@ class DualPlayerEngine @Inject constructor(
 
         playerA.removeListener(masterPlayerListener)
         playerA.removeAnalyticsListener(masterPlayerListener)
+        onPlayerAboutToBeReleasedListener?.invoke(playerA)
         playerA.release()
         playerB?.release()
         playerB = null
@@ -1118,6 +1123,7 @@ class DualPlayerEngine @Inject constructor(
         if (::playerA.isInitialized) {
             playerA.removeListener(masterPlayerListener)
             playerA.removeAnalyticsListener(masterPlayerListener)
+            onPlayerAboutToBeReleasedListener?.invoke(playerA)
             playerA.release()
         }
         playerB?.release()

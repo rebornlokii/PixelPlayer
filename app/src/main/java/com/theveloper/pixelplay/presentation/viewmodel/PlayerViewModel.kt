@@ -3565,7 +3565,8 @@ class PlayerViewModel @Inject constructor(
             scheme != "netease" &&
             scheme != "qqmusic" &&
             scheme != "navidrome" &&
-            scheme != "jellyfin"
+            scheme != "jellyfin" &&
+            scheme != "gdrive"
         ) {
             return mediaItem
         }
