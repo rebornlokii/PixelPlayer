@@ -2,6 +2,7 @@ package com.theveloper.pixelplay.data.worker
 
 import android.content.Context
 import android.util.Log
+import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
@@ -86,6 +87,20 @@ class SyncManager @Inject constructor(
     init {
         observeStorageChanges()
         observeAppForeground()
+        schedulePeriodicMaintenance()
+    }
+
+    /**
+     * Schedules the once-a-day heavy maintenance (LRC/cache/cloud). Uses a dedicated unique
+     * name distinct from [SyncWorker.WORK_NAME], so it never drives the foreground sync
+     * indicator. KEEP preserves the existing schedule across launches.
+     */
+    private fun schedulePeriodicMaintenance() {
+        workManager.enqueueUniquePeriodicWork(
+            SyncWorker.PERIODIC_MAINTENANCE_WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            SyncWorker.periodicMaintenanceWork()
+        )
     }
 
     /**

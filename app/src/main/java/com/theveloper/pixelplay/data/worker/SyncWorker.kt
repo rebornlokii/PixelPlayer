@@ -10,7 +10,10 @@ import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.PeriodicWorkRequest
+import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.theveloper.pixelplay.data.database.AlbumEntity
@@ -1138,6 +1141,10 @@ constructor(
 
     companion object {
         const val WORK_NAME = "com.theveloper.pixelplay.data.worker.SyncWorker"
+        // Distinct unique name so background maintenance never feeds the WORK_NAME-bound
+        // isSyncing/syncProgress flows — the loading indicator stays silent for it.
+        const val PERIODIC_MAINTENANCE_WORK_NAME =
+            "com.theveloper.pixelplay.data.worker.SyncWorker.PeriodicMaintenance"
         private const val TAG = "SyncWorker"
         const val INPUT_FORCE_METADATA = "input_force_metadata"
         const val INPUT_RUN_MAINTENANCE = "input_run_maintenance"
@@ -1225,6 +1232,26 @@ constructor(
                         )
                         .setConstraints(heavySyncConstraints)
                         .build()
+
+        // Daily "heavy cleanup" (LRC scan, album-art cache, cloud sync). Runs a FULL sync
+        // with maintenance on, but only while charging on an unmetered network so it stays
+        // invisible to the user.
+        fun periodicMaintenanceWork(): PeriodicWorkRequest {
+            val constraints = Constraints.Builder()
+                .setRequiresCharging(true)
+                .setRequiredNetworkType(NetworkType.UNMETERED)
+                .setRequiresStorageNotLow(true)
+                .build()
+            return PeriodicWorkRequestBuilder<SyncWorker>(24, TimeUnit.HOURS)
+                .setInputData(
+                    workDataOf(
+                        INPUT_SYNC_MODE to SyncMode.FULL.name,
+                        INPUT_RUN_MAINTENANCE to true
+                    )
+                )
+                .setConstraints(constraints)
+                .build()
+        }
     }
     
     // Logic to sync Telegram songs into main DB with Unified Library Support
