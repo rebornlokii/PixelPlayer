@@ -455,7 +455,7 @@ class MetadataEditStateHolder @Inject constructor(
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
                 val uris = songs.mapNotNull { song ->
                     song.id.toLongOrNull()?.takeIf { it > 0 }?.let { id ->
-                        MediaStorePermissionHelper.getMediaStoreUri(id)
+                        MediaStorePermissionHelper.getMediaStoreUri(context, id)
                     }
                 }
                 if (uris.isNotEmpty()) {
