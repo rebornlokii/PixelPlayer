@@ -131,6 +131,31 @@ internal fun shouldTriggerAudioOffloadStallFallback(
 }
 
 /**
+ * Decides whether an early STATE_BUFFERING (within ~500ms of audio playing) should be read
+ * as a HAL offload reset and trigger disabling offload for the session.
+ *
+ * The buffering is NOT treated as a HAL reset when it is explained by a recent user seek
+ * ([isPostSeekBuffering]) or by a just-finished crossfade ([isPostTransitionBuffering]) —
+ * in those cases the buffering is expected, and disabling offload would needlessly drop the
+ * battery saving and rebuild the player (an audible glitch).
+ */
+internal fun shouldDisableAudioOffloadOnEarlyBuffering(
+    audioOffloadEnabled: Boolean,
+    transitionRunning: Boolean,
+    lastPlayingAtMs: Long,
+    timeSincePlayingMs: Long,
+    isPostSeekBuffering: Boolean,
+    isPostTransitionBuffering: Boolean
+): Boolean {
+    return audioOffloadEnabled &&
+        !transitionRunning &&
+        lastPlayingAtMs > 0L &&
+        timeSincePlayingMs < 500L &&
+        !isPostSeekBuffering &&
+        !isPostTransitionBuffering
+}
+
+/**
  * Manages two ExoPlayer instances (A and B) to enable seamless transitions.
  *
  * Player A is the designated "master" player. During a crossfade the MediaSession can
@@ -154,6 +179,13 @@ class DualPlayerEngine @Inject constructor(
 ) {
     private companion object {
         private const val AUDIO_OFFLOAD_STALL_FALLBACK_MS = 4_000L
+        // Grace window after a crossfade/transition during which the STATE_BUFFERING
+        // "HAL offload reset" heuristic is suppressed. Right after the player swap the new
+        // master (the former auxiliary) has just started, so a brief buffering blip there
+        // must NOT be mistaken for a HAL underflow — doing so would disable audio offload
+        // for the whole session (losing the battery saving) and rebuild the player (an
+        // audible glitch right after the fade). This keeps offload enabled across crossfades.
+        private const val POST_TRANSITION_OFFLOAD_GUARD_MS = 2_000L
         private const val MAX_AUXILIARY_TIMELINE_ITEMS = 200
         private val LOCAL_MEDIA_SCHEMES = setOf("content", "file", "android.resource")
         private val REMOTE_MEDIA_SCHEMES = setOf("http", "https", "telegram", "netease", "qqmusic", "navidrome", "jellyfin", "gdrive")
@@ -216,6 +248,10 @@ class DualPlayerEngine @Inject constructor(
     private var bufferingStartedAtMs: Long = 0L
     // Diagnostics: timestamp when the most recent crossfade/transition started.
     private var transitionStartedAtMs: Long = 0L
+    // Timestamp when the most recent crossfade/transition finished. Used to give the new
+    // master a grace window before the HAL-offload-reset heuristic can fire, so a crossfade
+    // can never spuriously disable audio offload (battery) or trigger a player rebuild.
+    private var lastTransitionFinishedAtMs: Long = 0L
 
     /**
      * Whether ExoPlayer audio offload is currently enabled for this session. Exposed
@@ -467,10 +503,18 @@ class DualPlayerEngine @Inject constructor(
                     if (bufferingStartedAtMs == 0L) bufferingStartedAtMs = now
                     val timeSincePlayingMs = now - lastPlayingAtMs
                     val timeSinceSeekMs = now - lastSeekAtMs
+                    val timeSinceTransitionMs = now - lastTransitionFinishedAtMs
                     val isPostSeekBuffering = lastSeekAtMs > 0L && timeSinceSeekMs < 1_500L
-                    if (audioOffloadEnabled && !transitionRunning &&
-                        lastPlayingAtMs > 0L && timeSincePlayingMs < 500L &&
-                        !isPostSeekBuffering
+                    val isPostTransitionBuffering = lastTransitionFinishedAtMs > 0L &&
+                        timeSinceTransitionMs < POST_TRANSITION_OFFLOAD_GUARD_MS
+                    if (shouldDisableAudioOffloadOnEarlyBuffering(
+                            audioOffloadEnabled = audioOffloadEnabled,
+                            transitionRunning = transitionRunning,
+                            lastPlayingAtMs = lastPlayingAtMs,
+                            timeSincePlayingMs = timeSincePlayingMs,
+                            isPostSeekBuffering = isPostSeekBuffering,
+                            isPostTransitionBuffering = isPostTransitionBuffering
+                        )
                     ) {
                         disableAudioOffloadForSession(
                             reason = "HAL offload reset detected: STATE_BUFFERING after ${timeSincePlayingMs}ms of playback"
@@ -1119,6 +1163,7 @@ class DualPlayerEngine @Inject constructor(
                 playerB?.stop()
             } finally {
                 transitionRunning = false
+                lastTransitionFinishedAtMs = SystemClock.elapsedRealtime()
                 if (transitionStartedAtMs > 0L) {
                     PerformanceMetrics.recordTiming(
                         PerformanceMetrics.Timings.TRANSITION,
