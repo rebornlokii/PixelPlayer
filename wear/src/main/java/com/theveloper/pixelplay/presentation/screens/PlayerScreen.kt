@@ -8,6 +8,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -235,7 +236,7 @@ private fun PlayerContent(
                     PlayerMainPageHost(
                         state = state,
                         albumArt = albumArt,
-                        isCurrentPage = pagerState.currentPage == 0,
+                        isCurrentPage = pagerState.currentPage == 1,
                         isAmbient = isAmbient,
                         isPhoneConnected = isPhoneConnected,
                         isWatchOutputSelected = isWatchOutputSelected,
@@ -1724,8 +1725,8 @@ private fun CenterPlayButton(
             rotation.animateTo(
                 targetValue = 0f,
                 animationSpec = tween(
-                    durationMillis = 520,
-                    easing = LinearEasing,
+                    durationMillis = 616,
+                    easing = FastOutSlowInEasing,
                 ),
             )
             return@LaunchedEffect
