@@ -199,7 +199,7 @@ private fun PlayerContent(
     val pagerState = rememberPagerState(initialPage = 1, pageCount = { 3 })
     var mainPageQueueReveal by remember { mutableFloatStateOf(0f) }
     var albumRevealProgress by remember { mutableFloatStateOf(0f) }
-    val isMainPlayerPage = pagerState.currentPage == 0
+    val isMainPlayerPage = pagerState.currentPage == 1
     val isMainPlayerOverlayVisible =
         mainPageQueueReveal > 0.05f || albumRevealProgress > 0.05f
     val showPageIndicator =
