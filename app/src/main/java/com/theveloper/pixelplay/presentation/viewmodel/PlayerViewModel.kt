@@ -2990,7 +2990,7 @@ class PlayerViewModel @Inject constructor(
                 bufferingDebounceJob?.cancel()
                 if (playbackState == Player.STATE_BUFFERING) {
                     bufferingDebounceJob = viewModelScope.launch {
-                        delay(150) // Wait 150ms before showing buffering indicator
+                        delay(500) // Wait 500ms before showing buffering indicator
                         playbackStateHolder.updateStablePlayerState { state ->
                             state.copy(isBuffering = true)
                         }
@@ -3113,7 +3113,7 @@ class PlayerViewModel @Inject constructor(
                         )
 
                         song?.let { currentSongValue ->
-                            viewModelScope.launch {
+                            launch {
                                 val uri = currentSongValue.albumArtUriString?.toUri()
                                 val currentUri = playbackStateHolder.stablePlayerState.value.currentSong?.albumArtUriString
                                 themeStateHolder.extractAndGenerateColorScheme(uri, currentUri)
