@@ -304,6 +304,7 @@ fun LibrarySongsTabPaginated(
     onRefresh: () -> Unit
 ) {
     val listState = rememberLazyListState()
+    val dummyListState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
 
     when {
@@ -320,7 +321,6 @@ fun LibrarySongsTabPaginated(
                         )
                     )
                     .fillMaxSize(),
-                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
@@ -405,9 +405,10 @@ fun LibrarySongsTabPaginated(
                     }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        val activeListState = if (paginatedSongs.itemCount > 0) listState else dummyListState
                         LazyColumn(
                             modifier = Modifier
-                                .padding(start = 12.dp, end = if (listState.canScrollForward || listState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
+                                .padding(start = 12.dp, end = if (activeListState.canScrollForward || activeListState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
                                     RoundedCornerShape(
                                         topStart = 26.dp,
@@ -416,7 +417,7 @@ fun LibrarySongsTabPaginated(
                                         bottomEnd = PlayerSheetCollapsedCornerRadius
                                     )
                                 ),
-                            state = listState,
+                            state = activeListState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                         ) {
@@ -484,7 +485,7 @@ fun LibrarySongsTabPaginated(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = listState
+                            listState = activeListState
                         )
                     }
                 }

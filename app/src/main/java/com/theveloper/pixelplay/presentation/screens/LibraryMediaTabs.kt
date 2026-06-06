@@ -94,6 +94,8 @@ fun LibraryAlbumsTab(
 ) {
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
+    val dummyListState = rememberLazyListState()
+    val dummyGridState = rememberLazyGridState()
     val context = LocalContext.current
     val imageLoader = context.imageLoader
 
@@ -206,11 +208,7 @@ fun LibraryAlbumsTab(
 
     val refreshState = albums.loadState.refresh
     val reachedEndOfPagination = albums.loadState.append.endOfPaginationReached
-    val shouldShowInitialLoading = albums.itemCount == 0 && (
-        isLoading ||
-            refreshState is LoadState.Loading ||
-            (refreshState is LoadState.NotLoading && !reachedEndOfPagination)
-    )
+    val shouldShowInitialLoading = albums.itemCount == 0 && isLoading
 
     when {
         refreshState is LoadState.Error && albums.itemCount == 0 -> {
@@ -250,7 +248,6 @@ fun LibraryAlbumsTab(
                             )
                         )
                         .fillMaxSize(),
-                    state = listState,
                     contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -276,7 +273,6 @@ fun LibraryAlbumsTab(
                             )
                         )
                         .fillMaxSize(),
-                    state = gridState,
                     columns = GridCells.Fixed(2),
                     contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
@@ -320,9 +316,10 @@ fun LibraryAlbumsTab(
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (isListView) {
+                            val activeListState = if (albums.itemCount > 0) listState else dummyListState
                             LazyColumn(
                                 modifier = Modifier
-                                    .padding(start = 14.dp, end = if (listState.canScrollForward || listState.canScrollBackward) 24.dp else 14.dp, bottom = 6.dp)
+                                    .padding(start = 14.dp, end = if (activeListState.canScrollForward || activeListState.canScrollBackward) 24.dp else 14.dp, bottom = 6.dp)
                                     .clip(
                                         RoundedCornerShape(
                                             topStart = 16.dp,
@@ -331,7 +328,7 @@ fun LibraryAlbumsTab(
                                             bottomEnd = PlayerSheetCollapsedCornerRadius
                                         )
                                     ),
-                                state = listState,
+                                state = activeListState,
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
@@ -384,13 +381,14 @@ fun LibraryAlbumsTab(
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                                listState = listState,
+                                listState = activeListState,
                                 dragLabelProvider = albumFastScrollLabelProvider
                             )
                         } else {
+                            val activeGridState = if (albums.itemCount > 0) gridState else dummyGridState
                             LazyVerticalGrid(
                                 modifier = Modifier
-                                    .padding(start = 14.dp, end = if (gridState.canScrollForward || gridState.canScrollBackward) 24.dp else 14.dp, bottom = 6.dp)
+                                    .padding(start = 14.dp, end = if (activeGridState.canScrollForward || activeGridState.canScrollBackward) 24.dp else 14.dp, bottom = 6.dp)
                                     .clip(
                                         RoundedCornerShape(
                                             topStart = 16.dp,
@@ -399,7 +397,7 @@ fun LibraryAlbumsTab(
                                             bottomEnd = PlayerSheetCollapsedCornerRadius
                                         )
                                     ),
-                                state = gridState,
+                                state = activeGridState,
                                 columns = GridCells.Fixed(2),
                                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap + 4.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -455,7 +453,7 @@ fun LibraryAlbumsTab(
                                 modifier = Modifier
                                     .align(Alignment.CenterEnd)
                                     .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                                gridState = gridState,
+                                gridState = activeGridState,
                                 dragLabelProvider = albumFastScrollLabelProvider
                             )
                         }
@@ -480,6 +478,7 @@ fun LibraryArtistsTab(
     storageFilter: StorageFilter = StorageFilter.ALL
 ) {
     val listState = rememberLazyListState()
+    val dummyListState = rememberLazyListState()
     val artistFastScrollLabelProvider = remember(artists, currentArtistSortOption) {
         { index: Int ->
             artistFastScrollLabel(
@@ -516,11 +515,7 @@ fun LibraryArtistsTab(
 
     val refreshState = artists.loadState.refresh
     val reachedEndOfPagination = artists.loadState.append.endOfPaginationReached
-    val shouldShowInitialLoading = artists.itemCount == 0 && (
-        isLoading ||
-            refreshState is LoadState.Loading ||
-            (refreshState is LoadState.NotLoading && !reachedEndOfPagination)
-    )
+    val shouldShowInitialLoading = artists.itemCount == 0 && isLoading
 
     when {
         refreshState is LoadState.Error && artists.itemCount == 0 -> {
@@ -559,7 +554,6 @@ fun LibraryArtistsTab(
                         )
                     )
                     .fillMaxSize(),
-                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
@@ -601,9 +595,10 @@ fun LibraryArtistsTab(
                     }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        val activeListState = if (artists.itemCount > 0) listState else dummyListState
                         LazyColumn(
                             modifier = Modifier
-                                .padding(start = 12.dp, end = if (listState.canScrollForward || listState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
+                                .padding(start = 12.dp, end = if (activeListState.canScrollForward || activeListState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
                                     RoundedCornerShape(
                                         topStart = 26.dp,
@@ -612,7 +607,7 @@ fun LibraryArtistsTab(
                                         bottomEnd = PlayerSheetCollapsedCornerRadius
                                     )
                                 ),
-                            state = listState,
+                            state = activeListState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
                         ) {
@@ -647,7 +642,7 @@ fun LibraryArtistsTab(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = listState,
+                            listState = activeListState,
                             dragLabelProvider = artistFastScrollLabelProvider
                         )
                     }

@@ -81,6 +81,7 @@ fun LibrarySongsTab(
     hasCurrentSong: Boolean = false
 ) {
     val listState = rememberLazyListState()
+    val dummyListState = rememberLazyListState()
     val pullToRefreshState = rememberPullToRefreshState()
     val coroutineScope = rememberCoroutineScope()
     val visibilityCallback by rememberUpdatedState(onLocateCurrentSongVisibilityChanged)
@@ -214,14 +215,9 @@ fun LibrarySongsTab(
         }
     }
 
-    // Handle different loading states
     val refreshState = songs.loadState.refresh
     val reachedEndOfPagination = songs.loadState.append.endOfPaginationReached
-    val shouldShowInitialLoading = songs.itemCount == 0 && (
-        isLoading ||
-            refreshState is LoadState.Loading ||
-            (refreshState is LoadState.NotLoading && !reachedEndOfPagination)
-    )
+    val shouldShowInitialLoading = songs.itemCount == 0 && isLoading
 
     when {
         refreshState is LoadState.Error && songs.itemCount == 0 -> {
@@ -260,7 +256,6 @@ fun LibrarySongsTab(
                         )
                     )
                     .fillMaxSize(),
-                state = listState,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + ListExtraBottomGap)
             ) {
@@ -300,9 +295,10 @@ fun LibrarySongsTab(
                     }
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        val activeListState = if (songs.itemCount > 0) listState else dummyListState
                         LazyColumn(
                             modifier = Modifier
-                                .padding(start = 12.dp, end = if (listState.canScrollForward || listState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
+                                .padding(start = 12.dp, end = if (activeListState.canScrollForward || activeListState.canScrollBackward) 22.dp else 12.dp, bottom = 6.dp)
                                 .clip(
                                     RoundedCornerShape(
                                         topStart = 26.dp,
@@ -311,7 +307,7 @@ fun LibrarySongsTab(
                                         bottomEnd = PlayerSheetCollapsedCornerRadius
                                     )
                                 ),
-                            state = listState,
+                            state = activeListState,
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             contentPadding = PaddingValues(bottom = bottomBarHeight + MiniPlayerHeight + 30.dp)
                         ) {
@@ -379,7 +375,7 @@ fun LibrarySongsTab(
                             modifier = Modifier
                                 .align(Alignment.CenterEnd)
                                 .padding(end = 4.dp, top = 16.dp, bottom = bottomPadding),
-                            listState = listState,
+                            listState = activeListState,
                             dragLabelProvider = songFastScrollLabelProvider
                         )
                     }
