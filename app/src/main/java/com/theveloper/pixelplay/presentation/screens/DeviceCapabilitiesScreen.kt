@@ -56,6 +56,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -103,6 +104,9 @@ import com.theveloper.pixelplay.presentation.viewmodel.LocalMusicStorageSummary
 import com.theveloper.pixelplay.presentation.viewmodel.MemorySummary
 import com.theveloper.pixelplay.presentation.viewmodel.PlaybackCompatibilitySummary
 import com.theveloper.pixelplay.presentation.viewmodel.PlayerViewModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlinx.coroutines.launch
 import racra.compose.smooth_corner_rect_library.AbsoluteSmoothCornerShape
 import kotlin.math.roundToInt
@@ -191,6 +195,8 @@ fun DeviceCapabilitiesScreen(
                 lazyListState = lazyListState,
                 topPadding = currentTopBarHeightDp,
                 onGenerateReport = viewModel::generatePerformanceReport,
+                onAdvancedDiagnosticsChange = viewModel::setAdvancedPerformanceDiagnosticsEnabled,
+                onMarkLagNow = viewModel::markLagNow,
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -213,6 +219,8 @@ private fun DeviceCapabilitiesContent(
     lazyListState: LazyListState,
     topPadding: Dp,
     onGenerateReport: () -> Unit,
+    onAdvancedDiagnosticsChange: (Boolean) -> Unit,
+    onMarkLagNow: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
@@ -274,7 +282,11 @@ private fun DeviceCapabilitiesContent(
             PerformanceReportCard(
                 report = state.performanceReport,
                 isGenerating = state.isGeneratingReport,
-                onGenerate = onGenerateReport
+                advancedDiagnosticsEnabled = state.advancedDiagnosticsEnabled,
+                advancedDiagnosticsExpiresAtEpochMs = state.advancedDiagnosticsExpiresAtEpochMs,
+                onGenerate = onGenerateReport,
+                onAdvancedDiagnosticsChange = onAdvancedDiagnosticsChange,
+                onMarkLagNow = onMarkLagNow
             )
         }
     }
@@ -284,13 +296,18 @@ private fun DeviceCapabilitiesContent(
 private fun PerformanceReportCard(
     report: String?,
     isGenerating: Boolean,
+    advancedDiagnosticsEnabled: Boolean,
+    advancedDiagnosticsExpiresAtEpochMs: Long?,
     onGenerate: () -> Unit,
+    onAdvancedDiagnosticsChange: (Boolean) -> Unit,
+    onMarkLagNow: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val copiedMessage = stringResource(R.string.device_capabilities_report_copied)
     val shareTitle = stringResource(R.string.device_capabilities_report_share_title)
+    val lagMarkedMessage = stringResource(R.string.device_capabilities_advanced_diagnostics_marked)
 
     CapabilityCard(
         title = stringResource(R.string.device_capabilities_report_title),
@@ -302,6 +319,24 @@ private fun PerformanceReportCard(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        AdvancedDiagnosticsToggleRow(
+            enabled = advancedDiagnosticsEnabled,
+            expiresAtEpochMs = advancedDiagnosticsExpiresAtEpochMs,
+            onEnabledChange = onAdvancedDiagnosticsChange
+        )
+
+        if (advancedDiagnosticsEnabled) {
+            OutlinedButton(
+                modifier = Modifier.fillMaxWidth(),
+                onClick = {
+                    onMarkLagNow()
+                    Toast.makeText(context, lagMarkedMessage, Toast.LENGTH_SHORT).show()
+                }
+            ) {
+                Text(stringResource(R.string.device_capabilities_advanced_diagnostics_mark_lag))
+            }
+        }
 
         Button(
             modifier = Modifier.fillMaxWidth(),
@@ -387,6 +422,54 @@ private fun PerformanceReportCard(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AdvancedDiagnosticsToggleRow(
+    enabled: Boolean,
+    expiresAtEpochMs: Long?,
+    onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = AbsoluteSmoothCornerShape(18.dp, 60),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.device_capabilities_advanced_diagnostics_title),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = if (enabled && expiresAtEpochMs != null) {
+                        stringResource(
+                            R.string.device_capabilities_advanced_diagnostics_expires,
+                            formatDiagnosticsExpiry(expiresAtEpochMs)
+                        )
+                    } else {
+                        stringResource(R.string.device_capabilities_advanced_diagnostics_description)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = onEnabledChange
+            )
         }
     }
 }
@@ -1151,6 +1234,9 @@ private fun Float.visibleProgress(): Float {
     val clamped = coerceIn(0f, 1f)
     return if (clamped > 0f && clamped < 0.01f) 0.01f else clamped
 }
+
+private fun formatDiagnosticsExpiry(epochMs: Long): String =
+    SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(epochMs))
 
 @Composable
 private fun OutputRouteRow(

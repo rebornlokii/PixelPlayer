@@ -62,6 +62,7 @@ import com.theveloper.pixelplay.data.netease.NeteaseStreamProxy
 import com.theveloper.pixelplay.data.navidrome.NavidromeStreamProxy
 import com.theveloper.pixelplay.data.qqmusic.QqMusicStreamProxy
 import androidx.core.net.toUri
+import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 
 data class ActiveDecoderInfo(
     val name: String,
@@ -455,6 +456,16 @@ class DualPlayerEngine @Inject constructor(
                 PerformanceMetrics.Timings.AUDIO_DECODER_INIT,
                 initializationDurationMs
             )
+            AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                name = "audio_decoder_initialized"
+            ) {
+                mapOf(
+                    "decoderName" to decoderName,
+                    "isHardware" to isHardware.toString(),
+                    "initializationDurationMs" to initializationDurationMs.toString()
+                )
+            }
             Timber.tag("DualPlayerEngine").d("Audio decoder initialized: %s (Hardware: %b)", decoderName, isHardware)
         }
 
@@ -470,11 +481,29 @@ class DualPlayerEngine @Inject constructor(
                 sampleRate = if (format.sampleRate == Format.NO_VALUE) 0 else format.sampleRate,
                 pcmEncoding = if (format.pcmEncoding == Format.NO_VALUE) 0 else format.pcmEncoding
             )
+            AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                name = "audio_format_changed"
+            ) {
+                mapOf(
+                    "mime" to (format.sampleMimeType ?: "unknown"),
+                    "sampleRate" to format.sampleRate.toString(),
+                    "channels" to format.channelCount.toString(),
+                    "pcmEncoding" to format.pcmEncoding.toString(),
+                    "bitrate" to format.bitrate.toString()
+                )
+            }
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             if (audioSessionId != 0 && _activeAudioSessionId.value != audioSessionId) {
                 _activeAudioSessionId.value = audioSessionId
+                AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                    type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                    name = "audio_session_changed"
+                ) {
+                    mapOf("audioSessionId" to audioSessionId.toString())
+                }
                 Timber.tag("TransitionDebug").d("Master audio session changed: %d", audioSessionId)
             }
         }
@@ -482,6 +511,16 @@ class DualPlayerEngine @Inject constructor(
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             lastMediaItemTransitionAtMs = SystemClock.elapsedRealtime()
             cancelAudioOffloadFallback()
+            AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                name = "media_item_transition",
+                elapsedRealtimeMs = lastMediaItemTransitionAtMs
+            ) {
+                mapOf(
+                    "reason" to reason.toString(),
+                    "scheme" to (mediaItem?.localConfiguration?.uri?.scheme ?: "unknown")
+                )
+            }
             
             // If the transition was not automatic (e.g. user skip or playlist change),
             // immediately cancel any background crossfade logic to ensure responsiveness.
@@ -539,6 +578,11 @@ class DualPlayerEngine @Inject constructor(
                 Player.STATE_BUFFERING -> {
                     val now = SystemClock.elapsedRealtime()
                     if (bufferingStartedAtMs == 0L) bufferingStartedAtMs = now
+                    AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                        type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                        name = "playback_buffering",
+                        elapsedRealtimeMs = now
+                    )
                     val timeSincePlayingMs = now - lastPlayingAtMs
                     val timeSinceSeekMs = now - lastSeekAtMs
                     val timeSinceTransitionMs = now - lastTransitionFinishedAtMs
@@ -567,10 +611,17 @@ class DualPlayerEngine @Inject constructor(
                 }
                 Player.STATE_READY -> {
                     if (bufferingStartedAtMs > 0L) {
+                        val prepareDurationMs = SystemClock.elapsedRealtime() - bufferingStartedAtMs
                         PerformanceMetrics.recordTiming(
                             PerformanceMetrics.Timings.PLAYBACK_PREPARE,
-                            SystemClock.elapsedRealtime() - bufferingStartedAtMs
+                            prepareDurationMs
                         )
+                        AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                            type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+                            name = "playback_ready_after_buffering"
+                        ) {
+                            mapOf("prepareDurationMs" to prepareDurationMs.toString())
+                        }
                         bufferingStartedAtMs = 0L
                     }
                     scheduleAudioOffloadFallbackIfNeeded(playerA)
@@ -878,6 +929,12 @@ class DualPlayerEngine @Inject constructor(
 
     private fun rebuildPlayersPreservingMasterState(logMessage: String) {
         cancelAudioOffloadFallback()
+        AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+            type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+            name = "player_rebuild_start"
+        ) {
+            mapOf("reason" to logMessage)
+        }
 
         val desiredPlayWhenReady = playerA.playWhenReady
         // Guard against snapshotting a position that landed during a bad early-startup seek
@@ -920,6 +977,12 @@ class DualPlayerEngine @Inject constructor(
         _activeAudioSessionId.value = playerA.audioSessionId
         onPlayerSwappedListeners.forEach { it(playerA) }
 
+        AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+            type = AdvancedPerformanceDiagnostics.EventTypes.PLAYBACK,
+            name = "player_rebuild_end"
+        ) {
+            mapOf("audioSessionId" to playerA.audioSessionId.toString())
+        }
         Timber.tag("DualPlayerEngine").d(logMessage)
     }
 

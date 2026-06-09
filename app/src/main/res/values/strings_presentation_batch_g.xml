@@ -155,6 +155,11 @@
     <string name="device_capabilities_report_share">Share</string>
     <string name="device_capabilities_report_copied">Report copied to clipboard</string>
     <string name="device_capabilities_report_share_title">PixelPlay performance report</string>
+    <string name="device_capabilities_advanced_diagnostics_title">Advanced performance diagnostics</string>
+    <string name="device_capabilities_advanced_diagnostics_description">Off by default. Records a short lag timeline for beta troubleshooting.</string>
+    <string name="device_capabilities_advanced_diagnostics_expires">Active until %1$s</string>
+    <string name="device_capabilities_advanced_diagnostics_mark_lag">Mark lag now</string>
+    <string name="device_capabilities_advanced_diagnostics_marked">Lag moment marked</string>
     <string name="device_capabilities_findings_title">Compatibility Findings</string>
     <string name="device_capabilities_finding_clear_title">No major incompatibilities</string>
     <string name="device_capabilities_finding_clear_body">Your indexed tracks match the decoders Android reports on this device.</string>

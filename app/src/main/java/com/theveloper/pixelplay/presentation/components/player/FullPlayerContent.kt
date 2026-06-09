@@ -113,6 +113,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.theveloper.pixelplay.R
+import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnostics
 import com.theveloper.pixelplay.data.model.Artist
 import com.theveloper.pixelplay.data.model.Song
 import com.theveloper.pixelplay.data.preferences.AlbumArtQuality
@@ -1810,6 +1811,15 @@ private fun PlayerProgressBarSection(
                         val targetMs = (finalValue * durationForCalc).roundToLong()
                         targetSeekFraction = finalValue
                         lastSeekFinishedTime = System.currentTimeMillis()
+                        AdvancedPerformanceDiagnostics.recordEventIfEnabled(
+                            type = AdvancedPerformanceDiagnostics.EventTypes.UI,
+                            name = "player_seek_commit"
+                        ) {
+                            mapOf(
+                                "targetMs" to targetMs.toString(),
+                                "durationMs" to displayDurationValue.toString()
+                            )
+                        }
                         onSeek(targetMs)
                         sliderDragValue = null
                     },

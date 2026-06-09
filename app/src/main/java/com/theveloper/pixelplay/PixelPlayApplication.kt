@@ -14,6 +14,7 @@ import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.theveloper.pixelplay.data.preferences.UserPreferencesRepository
+import com.theveloper.pixelplay.data.diagnostics.AdvancedPerformanceDiagnosticsController
 import com.theveloper.pixelplay.data.repository.ArtistImageRepository
 import com.theveloper.pixelplay.data.telegram.TelegramRepository
 import com.theveloper.pixelplay.presentation.viewmodel.LibraryStateHolder
@@ -68,6 +69,9 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
     @Inject
     lateinit var userPreferencesRepository: dagger.Lazy<UserPreferencesRepository>
 
+    @Inject
+    lateinit var advancedPerformanceDiagnosticsController: dagger.Lazy<AdvancedPerformanceDiagnosticsController>
+
     private val startupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // AÑADE EL COMPANION OBJECT
@@ -112,6 +116,7 @@ class PixelPlayApplication : Application(), ImageLoaderFactory, Configuration.Pr
         }
 
         ProcessLifecycleOwner.get().lifecycle.addObserver(appLifecycleObserver)
+        advancedPerformanceDiagnosticsController.get().start(startupScope)
 
         startupScope.launch {
             AlbumArtUtils.migrateLegacyCacheLocation(this@PixelPlayApplication)
